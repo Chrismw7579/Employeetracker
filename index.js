@@ -13,7 +13,7 @@ const connection = mysql.createConnection({
 connection.connect(function(err) {
     if (err) throw err;
     console.log("connected as id " + connection.threadId + "\n");
-    
+   
     start();
 });
 
@@ -26,6 +26,7 @@ const start = () => {
             'Add a department.',
             'Add a role.',
             'Add an employee.',
+            'View employess by department',
             'View departments.',
             'View roles.',
             'View employees.',
@@ -44,6 +45,9 @@ const start = () => {
             case 'Add an employee.':
                 addEmployee();
                 break;
+            case 'View employess by department':
+                viewByDepartment();
+                break;
             case 'View departments.':
                 view('department');
                 break;
@@ -51,7 +55,7 @@ const start = () => {
                 view('role');
                 break;
             case 'View employees.':
-                view('employee');
+                viewAll();
                 break;
             case 'Update an employee.':
                 update();
@@ -62,12 +66,12 @@ const start = () => {
     });
 }
 
+// Checks if an id from a table exists
 const find = (table, id, cb) => {
     
     connection.query('select * from ?? where ?', 
         [
             table, 
-
             {
                 id: id
             }
@@ -75,7 +79,6 @@ const find = (table, id, cb) => {
             if (err) {
                 throw err;
             }
-
             cb(results != '');
         });
 }
@@ -96,6 +99,7 @@ const addDepartment = () => {
            }
            console.log(`${name.department} department added.`);
            start();
+        
         });
     });
 };
@@ -120,6 +124,7 @@ const addRole = () => {
         }
     ]).then(({title, salary, dep}) => {
 
+        // Checks that the department exists before adding a new role
         find('department', dep, (hasDep) => {
             if (hasDep) {
                 connection.query('insert into role (title, salary, department_id) values (?, ?, ?)', 
@@ -135,15 +140,11 @@ const addRole = () => {
                 console.log('There is no department with that id');
                 addRole();
             }
-        })
-
-        
+        });
     });
+}
 
-    
-};
-
-const addEmployee = (first, last, manager, role) => {
+const addEmployee = () => {
 
     inquirer.prompt([
         {
@@ -168,6 +169,7 @@ const addEmployee = (first, last, manager, role) => {
         },
     ]).then(({first_name, last_name, manager, role}) => {
 
+        // Checks that the role exists before inserting the employee
         find('role', role, hasRole => {
             if (hasRole) {
                 connection.query('insert into employee (first_name, last_name, manager_id, role_id) values (?, ?, ?, ?)',
@@ -185,7 +187,7 @@ const addEmployee = (first, last, manager, role) => {
             }
         });
     });
-};
+}
 
 const view = table => {
     connection.query('select * from ??', table, (err, results) => {
@@ -196,6 +198,46 @@ const view = table => {
         start();
     });
 };
+
+const viewAll = () => {
+    connection.query(`select employee.id, employee.first_name, employee.last_name, role.title, department.name, role.salary
+                    from employee
+                        inner join role
+                            on role.department_id = employee.role_id 
+                        inner join department
+                            on department.id = role.department_id
+                        order by employee.id
+                    `, (err, results) => {
+                        if (err) {
+                            throw err;
+                        }
+                        console.table(results);
+                    })
+}
+
+const viewByDepartment = () => {
+    inquirer.prompt([
+        {
+            name: 'id',
+            type: 'input',
+            message: 'What is the id of the department do you want to see?'
+        }
+    ]).then(({id}) => {
+        connection.query(`select employee.id, employee.first_name, employee.last_name
+        from department
+            inner join employee
+                on department.id = role_id
+            where department.id = ?; 
+        `, id, (err, results) => {
+        if (err) {
+            throw err;
+        }
+
+        console.table(results);
+        start();
+    });
+    })
+}
 
 const update = () => {
 
@@ -217,6 +259,7 @@ const update = () => {
         },
     ]).then(({first, last, role}) => {
 
+        // checks if the role exists before trying to update the employee
         find('role', role, hasRole => {
             if (hasRole) {
                 connection.query('update employee set ? where ? and ?', 
@@ -244,7 +287,7 @@ const update = () => {
             }
         });
     });
-};
+}
 
 
 

@@ -10,3 +10,6 @@ Employees have roles and managers, and roles have departments.
 Inquirer is used to prompt the user with choices to view and modify 
 
 the database. 
+
+
+![GIF](template.gif)
